@@ -6,7 +6,7 @@ services:
   # ──────────────────────────────
   - type: redis
     name: betbet-redis
-    plan: starter
+    plan: free
     ipAllowList: []   # private by default
 
   # ──────────────────────────────
@@ -15,7 +15,7 @@ services:
   - type: web
     name: betbet-frontend
     env: node
-    plan: starter
+    plan: free
     region: oregon
     buildCommand: |
       cd frontend
@@ -38,7 +38,7 @@ services:
   - type: web
     name: betbet-user-profile
     env: python
-    plan: starter
+    plan: free
     region: oregon
     buildCommand: |
       cd backend
@@ -72,7 +72,7 @@ services:
   - type: web
     name: betbet-game-engine
     env: python
-    plan: starter
+    plan: free
     region: oregon
     buildCommand: |
       cd backend
@@ -100,7 +100,7 @@ services:
   - type: web
     name: betbet-betting-market
     env: python
-    plan: starter
+    plan: free
     region: oregon
     buildCommand: |
       cd backend
@@ -129,7 +129,7 @@ services:
 # ──────────────────────────────
 databases:
   - name: betbet-postgres
-    plan: starter
+    plan: free
     region: oregon
     databaseName: betbet
     user: betbet_user
