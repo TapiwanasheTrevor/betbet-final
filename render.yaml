@@ -1,12 +1,7 @@
-# BetBet Platform - Render Deployment Configuration
-# Simplified deployment with essential services
-
+# BetBet Platform - Render Blueprint
 services:
-  # =============================================================================
-  # Database Services
-  # =============================================================================
-
-  - type: pgsql
+  # Database
+  - type: postgres
     name: betbet-postgres
     databaseName: betbet
     user: betbet
@@ -16,23 +11,28 @@ services:
     name: betbet-redis
     plan: starter
 
-  # =============================================================================
-  # Backend Services
-  # =============================================================================
+  # Frontend
+  - type: web
+    name: betbet-frontend
+    env: node
+    plan: starter
+    buildCommand: cd frontend && npm ci && npm run build
+    startCommand: cd frontend && npm start
+    envVars:
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production
 
   # User Profile Service
   - type: web
     name: betbet-user-profile
-    runtime: python
+    env: python
     plan: starter
-    branch: main
-    rootDir: backend
-    buildCommand: |
-      pip install -r requirements.txt
-    startCommand: |
-      cd services/user_profile
-      python -c "import sys; sys.path.append('../..'); import main"
-      python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend/services/user_profile && PYTHONPATH=../.. python -m uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
@@ -56,16 +56,10 @@ services:
   # Game Engine Service
   - type: web
     name: betbet-game-engine
-    runtime: python
+    env: python
     plan: starter
-    branch: main
-    rootDir: backend
-    buildCommand: |
-      pip install -r requirements.txt
-    startCommand: |
-      cd services/game_engine
-      python -c "import sys; sys.path.append('../..'); import main"
-      python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend/services/game_engine && PYTHONPATH=../.. python -m uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
@@ -87,16 +81,10 @@ services:
   # Betting Market Service
   - type: web
     name: betbet-betting-market
-    runtime: python
+    env: python
     plan: starter
-    branch: main
-    rootDir: backend
-    buildCommand: |
-      pip install -r requirements.txt
-    startCommand: |
-      cd services/betting_market
-      python -c "import sys; sys.path.append('../..'); import main"
-      python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend/services/betting_market && PYTHONPATH=../.. python -m uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
@@ -112,25 +100,3 @@ services:
         sync: false
       - key: CLERK_DOMAIN
         value: betbet.co.zw
-
-  # =============================================================================
-  # Frontend Service
-  # =============================================================================
-
-  - type: web
-    name: betbet-frontend
-    runtime: node
-    plan: starter
-    branch: main
-    rootDir: frontend
-    buildCommand: npm ci && npm run build
-    startCommand: npm start
-    envVars:
-      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-        sync: false
-      - key: CLERK_SECRET_KEY
-        sync: false
-      - key: NEXT_PUBLIC_API_URL
-        value: https://betbet-user-profile.onrender.com
-      - key: NODE_ENV
-        value: production
