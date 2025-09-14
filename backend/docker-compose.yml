@@ -1,0 +1,275 @@
+# BetBet Platform - Docker Compose Configuration
+# This sets up all services for local development and testing
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # Databases
+  # =============================================================================
+
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: betbet
+      POSTGRES_PASSWORD: betbet
+      POSTGRES_DB: betbet
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U betbet"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mongodb:
+    image: mongo:6.0-jammy
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: betbet
+      MONGO_INITDB_ROOT_PASSWORD: betbet
+      MONGO_INITDB_DATABASE: betbet
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  redis:
+    image: redis:7.0-alpine
+    command: redis-server --appendonly yes --requirepass betbet
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "betbet", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =============================================================================
+  # BetBet Services
+  # =============================================================================
+
+  user-profile:
+    build:
+      context: .
+      dockerfile: services/user_profile/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://betbet:betbet@postgres/betbet
+      - REDIS_URL=redis://:betbet@redis:6379
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - CLERK_WEBHOOK_SECRET=${CLERK_WEBHOOK_SECRET}
+      - CLERK_DOMAIN=${CLERK_DOMAIN:-betbet.com}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  game-engine:
+    build:
+      context: .
+      dockerfile: services/game_engine/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://betbet:betbet@postgres/betbet
+      - MONGODB_URL=mongodb://betbet:betbet@mongodb:27017/betbet
+      - REDIS_URL=redis://:betbet@redis:6379
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - CLERK_DOMAIN=${CLERK_DOMAIN:-betbet.com}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  betting-market:
+    build:
+      context: .
+      dockerfile: services/betting_market/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://betbet:betbet@postgres/betbet
+      - REDIS_URL=redis://:betbet@redis:6379
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - CLERK_DOMAIN=${CLERK_DOMAIN:-betbet.com}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  analytics:
+    build:
+      context: .
+      dockerfile: services/analytics/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://betbet:betbet@postgres/betbet
+      - MONGODB_URL=mongodb://betbet:betbet@mongodb:27017/betbet
+      - REDIS_URL=redis://:betbet@redis:6379
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - CLERK_DOMAIN=${CLERK_DOMAIN:-betbet.com}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8003:8003"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  wallet:
+    build:
+      context: .
+      dockerfile: services/wallet/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://betbet:betbet@postgres/betbet
+      - REDIS_URL=redis://:betbet@redis:6379
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - CLERK_DOMAIN=${CLERK_DOMAIN:-betbet.com}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8004:8004"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  social-forum:
+    build:
+      context: .
+      dockerfile: services/social_forum/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://betbet:betbet@postgres/betbet
+      - REDIS_URL=redis://:betbet@redis:6379
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - CLERK_DOMAIN=${CLERK_DOMAIN:-betbet.com}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8005:8005"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =============================================================================
+  # API Gateway
+  # =============================================================================
+
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - user-profile
+      - game-engine
+      - betting-market
+      - analytics
+      - wallet
+      - social-forum
+    restart: unless-stopped
+
+  # =============================================================================
+  # Optional Services (for production)
+  # =============================================================================
+
+  # Uncomment for production deployment with monitoring
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   volumes:
+  #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+  #   ports:
+  #     - "9090:9090"
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #     - '--storage.tsdb.path=/prometheus'
+
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=betbet
+  #   volumes:
+  #     - grafana_data:/var/lib/grafana
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - prometheus
+
+# =============================================================================
+# Volumes
+# =============================================================================
+
+volumes:
+  postgres_data:
+    driver: local
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
+  # grafana_data:
+  #   driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+
+networks:
+  default:
+    driver: bridge

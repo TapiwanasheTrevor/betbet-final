@@ -1,0 +1,250 @@
+# BetBet Platform - Render Deployment Configuration
+# This file defines all services and their configuration for Render deployment
+
+services:
+  # =============================================================================
+  # Database Services
+  # =============================================================================
+
+  - type: pgsql
+    name: betbet-postgres
+    databaseName: betbet
+    user: betbet
+    plan: starter
+    region: oregon
+    ipAllowList: []
+
+  - type: redis
+    name: betbet-redis
+    plan: starter
+    region: oregon
+    ipAllowList: []
+
+  # =============================================================================
+  # BetBet Backend Services
+  # =============================================================================
+
+  # User Profile Service
+  - type: web
+    name: betbet-user-profile
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn services.user_profile.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: betbet-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: betbet-redis
+          property: connectionString
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_WEBHOOK_SECRET
+        sync: false
+      - key: CLERK_DOMAIN
+        value: betbet.com
+
+  # Game Engine Service
+  - type: web
+    name: betbet-game-engine
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn services.game_engine.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: betbet-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: betbet-redis
+          property: connectionString
+      - key: MONGODB_URL
+        sync: false  # External MongoDB Atlas
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_DOMAIN
+        value: betbet.com
+
+  # Betting Market Service
+  - type: web
+    name: betbet-betting-market
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn services.betting_market.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: betbet-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: betbet-redis
+          property: connectionString
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_DOMAIN
+        value: betbet.com
+
+  # Analytics Service
+  - type: web
+    name: betbet-analytics
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn services.analytics.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: betbet-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: betbet-redis
+          property: connectionString
+      - key: MONGODB_URL
+        sync: false  # External MongoDB Atlas
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_DOMAIN
+        value: betbet.com
+      - key: OPENAI_API_KEY
+        sync: false
+
+  # Wallet Service
+  - type: web
+    name: betbet-wallet
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn services.wallet.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: betbet-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: betbet-redis
+          property: connectionString
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_DOMAIN
+        value: betbet.com
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+  # Social Forum Service
+  - type: web
+    name: betbet-social-forum
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn services.social_forum.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: betbet-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: betbet-redis
+          property: connectionString
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_DOMAIN
+        value: betbet.com
+
+  # =============================================================================
+  # Frontend Service
+  # =============================================================================
+
+  - type: web
+    name: betbet-frontend
+    runtime: node
+    plan: starter
+    region: oregon
+    branch: main
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: NEXT_PUBLIC_API_URL
+        value: https://api.betbet.com
+      - key: NODE_ENV
+        value: production
+
+  # =============================================================================
+  # API Gateway (Optional - using individual service URLs for now)
+  # =============================================================================
+
+  # Static site for API documentation
+  - type: static
+    name: betbet-api-docs
+    staticPublishPath: ./docs
+    buildCommand: |
+      mkdir -p docs
+      echo "<html><body><h1>BetBet API</h1><p>Services:</p>
+      <ul>
+        <li><a href='https://betbet-user-profile.onrender.com/docs'>User Profile Service</a></li>
+        <li><a href='https://betbet-game-engine.onrender.com/docs'>Game Engine Service</a></li>
+        <li><a href='https://betbet-betting-market.onrender.com/docs'>Betting Market Service</a></li>
+        <li><a href='https://betbet-analytics.onrender.com/docs'>Analytics Service</a></li>
+        <li><a href='https://betbet-wallet.onrender.com/docs'>Wallet Service</a></li>
+        <li><a href='https://betbet-social-forum.onrender.com/docs'>Social Forum Service</a></li>
+      </ul></body></html>" > docs/index.html
+
+# =============================================================================
+# Environment Groups
+# =============================================================================
+
+envVarGroups:
+  - name: betbet-shared-config
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: CORS_ORIGINS
+        value: "https://betbet.com,https://www.betbet.com"
