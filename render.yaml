@@ -1,18 +1,20 @@
-# BetBet Platform - Render Blueprint
+# BetBet Platform - Render Blueprint (Fixed)
 services:
-  # Database
-  - type: postgres
+  # PostgreSQL Database
+  - type: pserv
     name: betbet-postgres
-    databaseName: betbet
-    user: betbet
+    env: postgres
     plan: starter
+    databases:
+      - name: betbet
 
+  # Redis Cache
   - type: redis
     name: betbet-redis
     plan: starter
 
-  # Frontend
-  - type: web
+  # Frontend Service
+  - type: web_service
     name: betbet-frontend
     env: node
     plan: starter
@@ -27,7 +29,7 @@ services:
         value: production
 
   # User Profile Service
-  - type: web
+  - type: web_service
     name: betbet-user-profile
     env: python
     plan: starter
@@ -36,7 +38,8 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
+        fromService:
+          type: pserv
           name: betbet-postgres
           property: connectionString
       - key: REDIS_URL
@@ -54,7 +57,7 @@ services:
         sync: false
 
   # Game Engine Service
-  - type: web
+  - type: web_service
     name: betbet-game-engine
     env: python
     plan: starter
@@ -63,7 +66,8 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
+        fromService:
+          type: pserv
           name: betbet-postgres
           property: connectionString
       - key: REDIS_URL
@@ -73,13 +77,9 @@ services:
           property: connectionString
       - key: MONGODB_URL
         sync: false
-      - key: CLERK_SECRET_KEY
-        sync: false
-      - key: CLERK_DOMAIN
-        value: betbet.co.zw
 
   # Betting Market Service
-  - type: web
+  - type: web_service
     name: betbet-betting-market
     env: python
     plan: starter
@@ -88,7 +88,8 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
+        fromService:
+          type: pserv
           name: betbet-postgres
           property: connectionString
       - key: REDIS_URL
@@ -96,7 +97,7 @@ services:
           type: redis
           name: betbet-redis
           property: connectionString
-      - key: CLERK_SECRET_KEY
+      - key: MONGODB_URL
         sync: false
-      - key: CLERK_DOMAIN
-        value: betbet.co.zw
+      - key: STRIPE_SECRET_KEY
+        sync: false
