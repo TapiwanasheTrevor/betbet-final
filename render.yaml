@@ -1,25 +1,29 @@
-# BetBet Platform - Render Blueprint (Fixed)
-services:
-  # PostgreSQL Database
-  - type: pserv
-    name: betbet-postgres
-    env: postgres
-    plan: starter
-    databases:
-      - name: betbet
+# BetBet Platform — Render Blueprint (fixed)
 
-  # Redis Cache
+services:
+  # ──────────────────────────────
+  # Redis (managed)
+  # ──────────────────────────────
   - type: redis
     name: betbet-redis
     plan: starter
+    ipAllowList: []   # private by default
 
-  # Frontend Service
-  - type: web_service
+  # ──────────────────────────────
+  # Frontend (Next.js)
+  # ──────────────────────────────
+  - type: web
     name: betbet-frontend
     env: node
     plan: starter
-    buildCommand: cd frontend && npm ci && npm run build
-    startCommand: cd frontend && npm start
+    region: oregon
+    buildCommand: |
+      cd frontend
+      npm ci
+      npm run build
+    startCommand: |
+      cd frontend
+      npm start
     envVars:
       - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
         sync: false
@@ -28,18 +32,24 @@ services:
       - key: NODE_ENV
         value: production
 
-  # User Profile Service
-  - type: web_service
+  # ──────────────────────────────
+  # User Profile Service (FastAPI)
+  # ──────────────────────────────
+  - type: web
     name: betbet-user-profile
     env: python
     plan: starter
-    buildCommand: cd backend && pip install -r requirements.txt
-    startCommand: cd backend/services/user_profile && PYTHONPATH=../.. python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+    region: oregon
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+    startCommand: |
+      cd backend/services/user_profile
+      PYTHONPATH=../.. uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        fromService:
-          type: pserv
+        fromDatabase:
           name: betbet-postgres
           property: connectionString
       - key: REDIS_URL
@@ -56,18 +66,24 @@ services:
       - key: MONGODB_URL
         sync: false
 
-  # Game Engine Service
-  - type: web_service
+  # ──────────────────────────────
+  # Game Engine (FastAPI)
+  # ──────────────────────────────
+  - type: web
     name: betbet-game-engine
     env: python
     plan: starter
-    buildCommand: cd backend && pip install -r requirements.txt
-    startCommand: cd backend/services/game_engine && PYTHONPATH=../.. python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+    region: oregon
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+    startCommand: |
+      cd backend/services/game_engine
+      PYTHONPATH=../.. uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        fromService:
-          type: pserv
+        fromDatabase:
           name: betbet-postgres
           property: connectionString
       - key: REDIS_URL
@@ -78,18 +94,24 @@ services:
       - key: MONGODB_URL
         sync: false
 
-  # Betting Market Service
-  - type: web_service
+  # ──────────────────────────────
+  # Betting Market (FastAPI)
+  # ──────────────────────────────
+  - type: web
     name: betbet-betting-market
     env: python
     plan: starter
-    buildCommand: cd backend && pip install -r requirements.txt
-    startCommand: cd backend/services/betting_market && PYTHONPATH=../.. python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+    region: oregon
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+    startCommand: |
+      cd backend/services/betting_market
+      PYTHONPATH=../.. uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        fromService:
-          type: pserv
+        fromDatabase:
           name: betbet-postgres
           property: connectionString
       - key: REDIS_URL
@@ -101,3 +123,14 @@ services:
         sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
+
+# ──────────────────────────────
+# PostgreSQL (managed)
+# ──────────────────────────────
+databases:
+  - name: betbet-postgres
+    plan: starter
+    region: oregon
+    databaseName: betbet
+    user: betbet_user
+    ipAllowList: []     # keep it private
