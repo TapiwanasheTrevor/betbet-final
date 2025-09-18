@@ -19,7 +19,7 @@ services:
     region: oregon
     buildCommand: |
       cd frontend
-      npm ci
+      npm ci --legacy-peer-deps
       npm run build
     startCommand: |
       cd frontend
@@ -31,6 +31,18 @@ services:
         sync: false
       - key: NODE_ENV
         value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: https://betbet-api-gateway.onrender.com
+      - key: NEXT_PUBLIC_USER_PROFILE_URL
+        value: https://betbet-user-profile.onrender.com
+      - key: NEXT_PUBLIC_GAME_ENGINE_URL
+        value: https://betbet-game-engine.onrender.com
+      - key: NEXT_PUBLIC_BETTING_MARKET_URL
+        value: https://betbet-betting-market.onrender.com
+      - key: NEXT_PUBLIC_WALLET_URL
+        value: https://betbet-wallet.onrender.com
+      - key: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+        sync: false
 
   # ──────────────────────────────
   # User Profile Service (FastAPI)
@@ -122,6 +134,100 @@ services:
       - key: MONGODB_URL
         sync: false
       - key: STRIPE_SECRET_KEY
+        sync: false
+
+  # ──────────────────────────────
+  # Wallet Service (FastAPI)
+  # ──────────────────────────────
+  - type: web
+    name: betbet-wallet
+    env: python
+    plan: free
+    region: oregon
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+    startCommand: |
+      cd backend/services/wallet
+      PYTHONPATH=../.. uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: betbet-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: betbet-redis
+          property: connectionString
+      - key: MONGODB_URL
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+
+  # ──────────────────────────────
+  # Analytics Service (FastAPI)
+  # ──────────────────────────────
+  - type: web
+    name: betbet-analytics
+    env: python
+    plan: free
+    region: oregon
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+    startCommand: |
+      cd backend/services/analytics
+      PYTHONPATH=../.. uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: betbet-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: betbet-redis
+          property: connectionString
+      - key: MONGODB_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+
+  # ──────────────────────────────
+  # Social Forum Service (FastAPI)
+  # ──────────────────────────────
+  - type: web
+    name: betbet-social-forum
+    env: python
+    plan: free
+    region: oregon
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+    startCommand: |
+      cd backend/services/social_forum
+      PYTHONPATH=../.. uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: betbet-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: betbet-redis
+          property: connectionString
+      - key: MONGODB_URL
+        sync: false
+      - key: CLERK_SECRET_KEY
         sync: false
 
 # ──────────────────────────────
