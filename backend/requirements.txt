@@ -27,7 +27,7 @@ numpy==1.26.4
 scikit-learn==1.5.2
 
 # Game Logic
-chess==1.12.0
+chess==1.11.2
 
 # Message Queues & WebSockets
 aiokafka==0.12.0
